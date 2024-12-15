@@ -133,12 +133,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get interests from both image and text input
+    // Get interests from text input (if any)
     let allInterests = interests
       .split(",")
       .map((i) => i.trim())
       .filter(Boolean);
 
+    // If we have an image, analyze it for interests
     if (imageFile) {
       const bytes = await imageFile.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -148,7 +149,7 @@ export async function POST(request: Request) {
       allInterests = [...allInterests, ...imageInterests];
     }
 
-    // Ensure we have some interests
+    // If no interests provided and no image uploaded, use fallback interests
     if (allInterests.length === 0) {
       allInterests = getFallbackInterests();
     }
