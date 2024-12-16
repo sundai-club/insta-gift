@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { Groq } from "groq-sdk";
+import sharp from "sharp";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
 });
 
 interface GiftRecommendation {
@@ -14,181 +15,170 @@ interface GiftRecommendation {
   etsy_link?: string;
 }
 
-async function analyzeImage(base64Image: string): Promise<string[]> {
+async function compressImage(buffer: Buffer): Promise<string> {
   try {
-    console.log("[Image Analysis] Starting image analysis...");
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Analyze this Instagram grid and list the main interests and hobbies shown. List only single words or short phrases, one per line. Focus on activities, hobbies, and lifestyle preferences visible in the images.",
-            },
-            {
-              type: "image_url",
-              image_url: { url: `data:image/jpeg;base64,${base64Image}` },
-            },
-          ],
-        },
-      ],
-      max_tokens: 300,
-    });
-
-    const rawResponse = response.choices[0].message.content;
-    console.log("[Image Analysis] Raw GPT response:", rawResponse);
-
-    const interests = rawResponse
-      ?.split("\n")
-      .map((interest) => interest.trim().toLowerCase())
-      .filter((interest) => interest && interest.split(" ").length <= 3);
-
-    console.log("[Image Analysis] Processed interests:", interests);
-
-    if (!interests || interests.length === 0) {
-      console.log("[Image Analysis] No interests found, using fallback");
-      return getFallbackInterests();
+    if (!buffer || buffer.length === 0) {
+      console.error("[Image Compression] Empty buffer received");
+      return "";
     }
 
-    return interests;
+    const compressedImageBuffer = await sharp(buffer)
+      .resize(200, 200, {
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        quality: 40,
+        progressive: true,
+        optimizeScans: true,
+        chromaSubsampling: "4:2:0",
+      })
+      .toBuffer();
+
+    const base64 = compressedImageBuffer.toString("base64");
+    const truncatedBase64 = base64.slice(0, 50000);
+
+    return truncatedBase64;
   } catch (error) {
-    console.error("[Image Analysis] Error:", error);
-    return getFallbackInterests();
+    console.error("[Image Compression] Error:", error);
+    return "";
   }
 }
 
-function getFallbackInterests(): string[] {
-  return [
-    "technology",
-    "fashion",
-    "home decor",
-    "books",
-    "fitness",
-    "cooking",
-    "music",
-  ];
-}
-
-async function generateGiftRecommendation(
-  interest: string,
-  age: number,
-  budget: number
-): Promise<GiftRecommendation> {
+async function analyzeImage(base64Image: string): Promise<string> {
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
+    console.log("[Image Analysis] Starting image analysis...");
+
+    const completion = await groq.chat.completions.create({
+      model: "mixtral-8x7b-32768",
       messages: [
         {
           role: "system",
-          content: `You are a gift recommendation expert. Respond with ONLY a JSON object in this exact format:
-{
-  "name": "Gift Name",
-  "description": "Brief description without any apostrophes",
-  "price": 29.99,
-  "match_reason": "Why this matches, avoid using apostrophes"
-}`,
+          content:
+            "You are an expert at analyzing Instagram profiles. Provide a detailed analysis of the person's lifestyle, activities, and preferences to help recommend thoughtful gifts.",
         },
         {
           role: "user",
-          content: `Suggest ONE specific gift for a ${age} year old who likes ${interest}. Budget: $${budget}. Avoid using apostrophes in descriptions.`,
+          content: `Analyze this Instagram profile grid and describe what you observe:
+1. What activities and hobbies are shown?
+2. What locations or environments appear?
+3. What lifestyle elements are visible?
+4. What appears to be their main interests?
+5. What themes or patterns do you notice?
+
+Provide a detailed analysis that could help recommend personalized gifts.`,
         },
       ],
-      temperature: 0.7,
+      temperature: 0.5,
+      max_tokens: 500,
     });
 
-    let recommendationText =
-      response.choices[0].message.content?.trim() || "{}";
+    const analysis = completion.choices[0]?.message?.content || "";
+    console.log("[Image Analysis] Full analysis:", analysis);
+    return analysis;
+  } catch (error) {
+    console.error("[Image Analysis] Error:", error);
+    return "";
+  }
+}
+
+async function generateGiftRecommendations(
+  age: number,
+  budget: number,
+  profileAnalysis: string
+): Promise<GiftRecommendation[]> {
+  try {
+    const response = await groq.chat.completions.create({
+      model: "mixtral-8x7b-32768",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a creative gift recommendation expert who specializes in unique, personalized gifts. Avoid common or generic suggestions like gift cards or passes. Instead, focus on specific items that match the person's exact interests and activities. Each recommendation should be distinct and tailored to different aspects of their lifestyle.",
+        },
+        {
+          role: "user",
+          content: `Based on this Instagram profile analysis:
+${profileAnalysis}
+
+Generate 3 UNIQUE and SPECIFIC gift recommendations for a ${age} year old with a budget of $${budget}. 
+Each gift should be different from the others and relate to different interests/activities shown in their profile.
+Avoid generic items like passes, gift cards, or common accessories.
+
+Format as JSON array: [{"name": "Gift Name", "description": "Description", "price": number, "match_reason": "Reason"}].
+Keep descriptions concise and avoid apostrophes.`,
+        },
+      ],
+      temperature: 0.9,
+      max_tokens: 800,
+      top_p: 0.95,
+    });
+
+    let recommendationsText =
+      response.choices[0].message.content?.trim() || "[]";
 
     // Extract JSON if it's wrapped in other text
-    const jsonMatch = recommendationText.match(/\{[\s\S]*\}/);
+    const jsonMatch = recommendationsText.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
-      recommendationText = jsonMatch[0];
+      recommendationsText = jsonMatch[0];
     }
 
     // Clean up the JSON string
-    recommendationText = recommendationText
-      .replace(/[\u201C\u201D]/g, '"') // Replace smart quotes
-      .replace(/[\u2018\u2019]/g, "'") // Replace smart single quotes
-      .replace(/'/g, "'") // Standardize single quotes
+    recommendationsText = recommendationsText
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/'/g, "'")
       .replace(/\n/g, " ")
       .replace(/,\s*}/g, "}")
       .replace(/\s+/g, " ")
       .replace(/\s*:\s*/g, ":")
       .replace(/\s*,\s*/g, ",")
-      .replace(/it['']s/gi, "it is") // Replace problematic contractions
-      .replace(/['']s\s/g, "s ") // Handle possessives
-      .replace(/['']re\s/g, " are ") // Handle other contractions
-      .replace(/['']t\s/g, "t "); // Handle 't' contractions
+      .replace(/it['']s/gi, "it is")
+      .replace(/['']s\s/g, "s ")
+      .replace(/['']re\s/g, " are ")
+      .replace(/['']t\s/g, "t ");
 
-    try {
-      const recommendation = JSON.parse(recommendationText);
+    const recommendations = JSON.parse(recommendationsText);
 
-      // Validate required fields
-      if (
-        !recommendation.name ||
-        !recommendation.description ||
-        !recommendation.match_reason
-      ) {
-        throw new Error("Missing required fields in recommendation");
-      }
-
-      // Clean up any remaining problematic characters in the text fields
-      const cleanText = (text: string) =>
-        text.replace(/[''"]/g, "").replace(/\s+/g, " ").trim();
-
-      return {
-        name: cleanText(recommendation.name),
-        description: cleanText(recommendation.description),
-        price: parseFloat(
-          String(recommendation.price || budget).replace(/[$,]/g, "")
-        ),
-        match_reason: cleanText(recommendation.match_reason),
-        amazon_link: `https://www.amazon.com/s?k=${encodeURIComponent(
-          recommendation.name
-        )}`,
-        etsy_link: `https://www.etsy.com/search?q=${encodeURIComponent(
-          recommendation.name
-        )}`,
-      };
-    } catch (parseError) {
-      console.error("Error parsing recommendation:", parseError);
-      console.error("Raw text:", recommendationText);
-      // Fall through to default recommendation
-    }
+    return recommendations.map((rec: any) => ({
+      name: rec.name || "Gift suggestion",
+      description: rec.description || "",
+      price: parseFloat(String(rec.price || budget).replace(/[$,]/g, "")),
+      match_reason: rec.match_reason || "",
+      amazon_link: `https://www.amazon.com/s?k=${encodeURIComponent(
+        rec.name || ""
+      )}`,
+      etsy_link: `https://www.etsy.com/search?q=${encodeURIComponent(
+        rec.name || ""
+      )}`,
+    }));
   } catch (error) {
-    console.error("Error generating recommendation:", error);
+    console.error("Error generating recommendations:", error);
+    // Return fallback recommendations
+    return [
+      {
+        name: "No recommendations available",
+        description: "No personalized gift recommendations available.",
+        price: budget,
+        match_reason: "No profile analysis available.",
+        amazon_link: `https://www.amazon.com/s?k=${encodeURIComponent("gift")}`,
+        etsy_link: `https://www.etsy.com/search?q=${encodeURIComponent(
+          "gift"
+        )}`,
+      },
+    ];
   }
-
-  // Default recommendation if anything fails
-  return {
-    name: `${interest.charAt(0).toUpperCase() + interest.slice(1)} Gift Set`,
-    description: `A curated gift set for ${interest} enthusiasts`,
-    price: budget,
-    match_reason: `Perfect for someone who loves ${interest}`,
-    amazon_link: `https://www.amazon.com/s?k=${encodeURIComponent(
-      interest
-    )}+gift`,
-    etsy_link: `https://www.etsy.com/search?q=${encodeURIComponent(
-      interest
-    )}+gift`,
-  };
 }
 
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
-
     const age = Number(formData.get("age"));
-    const interests = String(formData.get("interests") || "");
     const budget = Number(formData.get("budget"));
     const imageFile = formData.get("instagram-grid") as File | null;
 
-    console.log("[API] Received request:", {
+    console.log("\n[API] Starting new request:", {
       age,
-      interests,
       budget,
       hasImage: !!imageFile,
     });
@@ -200,55 +190,32 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get interests from text input (if any)
-    let allInterests = interests
-      .split(",")
-      .map((i) => i.trim())
-      .filter(Boolean);
-
-    console.log("[API] Manual interests:", allInterests);
-
-    // If we have an image, analyze it for interests
+    let profileAnalysis = "";
     if (imageFile) {
-      console.log("[API] Processing uploaded image...");
+      console.log("\n[API] Processing Instagram profile image...");
       const bytes = await imageFile.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      const base64Image = buffer.toString("base64");
-      console.log("[API] Image converted to base64");
+      const base64Image = await compressImage(buffer);
 
-      const imageInterests = await analyzeImage(base64Image);
-      console.log("[API] Interests from image:", imageInterests);
+      console.log("\n[API] Starting profile analysis...");
+      profileAnalysis = await analyzeImage(base64Image);
 
-      allInterests = [...allInterests, ...imageInterests];
+      console.log("\n[API] Profile Analysis Results:");
+      console.log("----------------------------------------");
+      console.log(profileAnalysis);
+      console.log("----------------------------------------");
+    } else {
+      console.log("\n[API] No profile image provided");
     }
 
-    // If no interests provided and no image uploaded, use fallback interests
-    if (allInterests.length === 0) {
-      console.log("[API] Using fallback interests");
-      allInterests = getFallbackInterests();
-    }
-
-    console.log("[API] Final combined interests:", allInterests);
-
-    // Get unique interests and shuffle them
-    const uniqueInterests = [...new Set(allInterests)]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3);
-
-    console.log(
-      "[API] Selected interests for recommendations:",
-      uniqueInterests
+    console.log("\n[API] Generating gift recommendations based on analysis...");
+    const recommendations = await generateGiftRecommendations(
+      age,
+      budget,
+      profileAnalysis || "No profile analysis available."
     );
 
-    // Generate recommendations
-    const recommendations = await Promise.all(
-      uniqueInterests.map((interest) =>
-        generateGiftRecommendation(interest, age, budget)
-      )
-    );
-
-    console.log("[API] Generated recommendations:", recommendations);
-
+    console.log("\n[API] Generated recommendations:", recommendations);
     return NextResponse.json({ recommendations });
   } catch (error) {
     console.error("[API] Error:", error);

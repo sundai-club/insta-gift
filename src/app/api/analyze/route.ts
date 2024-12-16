@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { Groq } from "groq-sdk";
 import { writeFile } from "fs/promises";
 import path from "path";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
 });
 
 interface InstagramAnalyzer {
@@ -15,37 +15,33 @@ interface InstagramAnalyzer {
 class InstagramAnalyzerImpl implements InstagramAnalyzer {
   async analyzeImage(base64Image: string): Promise<string[]> {
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4-vision-preview",
+      const completion = await groq.chat.completions.create({
+        model: "mixtral-8x7b-32768",
         messages: [
           {
+            role: "system",
+            content:
+              "You are a gift recommendation expert analyzing Instagram images to identify interests and hobbies.",
+          },
+          {
             role: "user",
-            content: [
-              {
-                type: "text",
-                text: "What are the main interests and hobbies shown in this Instagram grid? List only single words or short phrases, one per line.",
-              },
-              {
-                type: "image_url",
-                image_url: { url: `data:image/jpeg;base64,${base64Image}` },
-              },
-            ],
+            content:
+              "What are the main interests and hobbies shown in this Instagram grid? List only single words or short phrases, one per line.",
           },
         ],
-        max_tokens: 300,
+        temperature: 0.7,
+        max_tokens: 1000,
       });
 
-      const interests =
-        response.choices[0].message.content
-          ?.split("\n")
-          .map((interest) => interest.trim().toLowerCase())
-          .filter((interest) => interest && interest.split(" ").length <= 3) ||
-        [];
+      const interests = completion.choices[0]?.message?.content
+        ?.split("\n")
+        .filter(Boolean)
+        .map((interest) => interest.trim());
 
-      return interests.length ? interests : this.getFallbackInterests();
+      return interests || [];
     } catch (error) {
       console.error("Error analyzing image:", error);
-      return this.getFallbackInterests();
+      return [];
     }
   }
 
