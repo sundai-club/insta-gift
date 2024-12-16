@@ -24,10 +24,49 @@
 .snowflake {
   position: fixed;
   color: white;
-  text-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
-  animation: fall linear infinite;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.3));
+  animation: snowfall linear infinite;
   z-index: 1;
   pointer-events: none;
+  line-height: 0;
+}
+
+.snowflake svg {
+  transform-origin: center;
+  animation: snowflakeSpin 6s linear infinite;
+}
+
+@keyframes snowflakeSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Sparkle effect */
+.snowflake::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.4) 0%,
+    transparent 60%
+  );
+  opacity: 0.3;
+  animation: sparkle 2s ease-in-out infinite alternate;
+}
+
+@keyframes sparkle {
+  from {
+    opacity: 0.1;
+  }
+  to {
+    opacity: 0.3;
+  }
 }
 
 :root {
