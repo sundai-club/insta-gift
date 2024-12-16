@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { Groq } from "groq-sdk";
 import sharp from "sharp";
+import * as cheerio from "cheerio";
+import fetch from "node-fetch";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -11,8 +13,7 @@ interface GiftRecommendation {
   description: string;
   price: number;
   match_reason: string;
-  amazon_link?: string;
-  etsy_link?: string;
+  amazon_asin?: string;
 }
 
 async function compressImage(buffer: Buffer): Promise<string> {
@@ -94,7 +95,7 @@ async function generateGiftRecommendations(
         {
           role: "system",
           content:
-            "You are a creative gift recommendation expert who specializes in unique, personalized gifts. Avoid common or generic suggestions like gift cards or passes. Instead, focus on specific items that match the person's exact interests and activities. Each recommendation should be distinct and tailored to different aspects of their lifestyle.",
+            "You are a creative gift recommendation expert who specializes in unique, personalized gifts. Include specific Amazon ASINs (product IDs) for each recommendation. Focus on highly-rated products that match the person's interests.",
         },
         {
           role: "user",
@@ -102,10 +103,18 @@ async function generateGiftRecommendations(
 ${profileAnalysis}
 
 Generate 3 UNIQUE and SPECIFIC gift recommendations for a ${age} year old with a budget of $${budget}. 
-Each gift should be different from the others and relate to different interests/activities shown in their profile.
+Each gift should be different and include a real Amazon ASIN (10-character product ID).
 Avoid generic items like passes, gift cards, or common accessories.
 
-Format as JSON array: [{"name": "Gift Name", "description": "Description", "price": number, "match_reason": "Reason"}].
+Format as JSON array: [
+  {
+    "name": "Gift Name",
+    "description": "Description",
+    "price": number,
+    "match_reason": "Reason",
+    "amazon_asin": "B0123XXXXX"  // Include real Amazon ASIN
+  }
+].
 Keep descriptions concise and avoid apostrophes.`,
         },
       ],
@@ -140,18 +149,26 @@ Keep descriptions concise and avoid apostrophes.`,
 
     const recommendations = JSON.parse(recommendationsText);
 
-    return recommendations.map((rec: any) => ({
-      name: rec.name || "Gift suggestion",
-      description: rec.description || "",
-      price: parseFloat(String(rec.price || budget).replace(/[$,]/g, "")),
-      match_reason: rec.match_reason || "",
-      amazon_link: `https://www.amazon.com/s?k=${encodeURIComponent(
-        rec.name || ""
-      )}`,
-      etsy_link: `https://www.etsy.com/search?q=${encodeURIComponent(
-        rec.name || ""
-      )}`,
-    }));
+    // Wait for all promises to resolve
+    const recommendationsWithLinks = await Promise.all(
+      recommendations.map(async (rec: any) => {
+        const amazonProduct = await getFirstAmazonResult(rec.name);
+
+        return {
+          name: amazonProduct?.name || rec.name || "Gift suggestion",
+          description: amazonProduct?.description || rec.description || "",
+          price:
+            amazonProduct?.price ||
+            parseFloat(String(rec.price || budget).replace(/[$,]/g, "")),
+          match_reason: rec.match_reason || "",
+          amazon_link:
+            amazonProduct?.url ||
+            `https://www.amazon.com/s?k=${encodeURIComponent(rec.name || "")}`,
+        };
+      })
+    );
+
+    return recommendationsWithLinks;
   } catch (error) {
     console.error("Error generating recommendations:", error);
     // Return fallback recommendations
@@ -162,11 +179,75 @@ Keep descriptions concise and avoid apostrophes.`,
         price: budget,
         match_reason: "No profile analysis available.",
         amazon_link: `https://www.amazon.com/s?k=${encodeURIComponent("gift")}`,
-        etsy_link: `https://www.etsy.com/search?q=${encodeURIComponent(
-          "gift"
-        )}`,
       },
     ];
+  }
+}
+
+interface AmazonProduct {
+  url: string;
+  name: string;
+  price: number;
+  description?: string;
+}
+
+async function getFirstAmazonResult(
+  searchQuery: string
+): Promise<AmazonProduct | null> {
+  try {
+    const searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(
+      searchQuery
+    )}`;
+    const response = await fetch(searchUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+      },
+    });
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+
+    // Find first product
+    const firstProduct = $('[data-component-type="s-search-result"]').first();
+    if (!firstProduct.length) return null;
+
+    // Get product URL
+    const productUrl = firstProduct
+      .find('a[href*="/dp/"]')
+      .first()
+      .attr("href");
+    if (!productUrl) return null;
+
+    // Get ASIN
+    const asinMatch = productUrl.match(/\/dp\/([A-Z0-9]{10})/);
+    if (!asinMatch) return null;
+
+    // Get product details
+    const name = firstProduct.find("h2 span").text().trim();
+    const priceWhole = firstProduct
+      .find(".a-price-whole")
+      .first()
+      .text()
+      .trim();
+    const priceFraction = firstProduct
+      .find(".a-price-fraction")
+      .first()
+      .text()
+      .trim();
+    const description = firstProduct.find(".a-size-base").text().trim();
+
+    const price = parseFloat(`${priceWhole}.${priceFraction}`) || 0;
+
+    return {
+      url: `https://www.amazon.com/dp/${asinMatch[1]}`,
+      name,
+      price,
+      description,
+    };
+  } catch (error) {
+    console.error("Error getting Amazon result:", error);
+    return null;
   }
 }
 
