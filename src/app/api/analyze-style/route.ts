@@ -6,7 +6,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Function to estimate price using GPT-4o
+// Function to estimate price using GPT-4
 async function estimatePriceRange(item: string, style: string, budget: string) {
   const pricePrompt = `As a fashion expert, estimate a realistic price range for:
 Item: ${item}
