@@ -27,17 +27,17 @@ const sampleStyles = [
   {
     name: "Minimalist Chic",
     description: "Clean lines, neutral colors, and timeless pieces",
-    image: "/styles/minimalist.jpg",
+    image: "/samples/minimalist.jpg",
   },
   {
     name: "Boho Spirit",
     description: "Free-spirited, layered, and earth-toned fashion",
-    image: "/styles/boho.jpg",
+    image: "/samples/bohemian.jpg",
   },
   {
     name: "Street Style",
     description: "Urban, bold, and trend-setting looks",
-    image: "/styles/street.jpg",
+    image: "/samples/streetwear.jpg",
   },
 ];
 
