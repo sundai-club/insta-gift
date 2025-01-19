@@ -133,8 +133,7 @@ Focus on identifying specific, searchable items and their unique characteristics
         items: analysis.styling_patterns.map(pattern => ({
           name: "Styling Tip",
           description: pattern,
-          style_match: "Based on analyzed patterns",
-          price: 0
+          style_match: "Based on analyzed patterns"
         })),
         aesthetic: "Styling Techniques",
         color_palette: analysis.color_palette.primary
