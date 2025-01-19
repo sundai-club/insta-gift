@@ -6,7 +6,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Function to estimate price using GPT-4
+// Function to estimate price using GPT-4 Turbo
 async function estimatePriceRange(item: string, style: string, budget: string) {
   const pricePrompt = `As a fashion expert, estimate a realistic price range for:
 Item: ${item}
@@ -79,6 +79,55 @@ async function searchMultipleStores(item: string, style: string, budget: string)
   }
 }
 
+// Function to clean and parse GPT response
+function parseGPTResponse(text: string) {
+  // Remove any potential markdown or text decorations
+  let cleaned = text
+    .replace(/```json\n?/g, '')
+    .replace(/```\n?/g, '')
+    .trim();
+
+  // Try to extract JSON content between curly braces
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (match) {
+    cleaned = match[0];
+  }
+
+  // Fix common JSON syntax issues
+  cleaned = cleaned
+    // Remove trailing commas
+    .replace(/,(\s*[}\]])/g, '$1')
+    // Fix missing quotes around property names
+    .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
+    // Ensure proper spacing
+    .replace(/"\s+:/g, '":')
+    .replace(/:\s+"/g, ':"');
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error('Failed to parse GPT response:', e);
+    console.error('Raw text:', text);
+    console.error('Cleaned text:', cleaned);
+    
+    // Return a minimal valid structure
+    return {
+      key_pieces: [{
+        item: "Style item",
+        description: "Could not analyze details",
+        style_elements: "Classic style",
+        quality_assessment: "Standard quality"
+      }],
+      color_palette: {
+        primary: ["#000000"],
+        accent: []
+      },
+      styling_patterns: ["Keep it simple and classic"],
+      overall_aesthetic: "Classic style"
+    };
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const { image, budget } = await req.json();
@@ -93,31 +142,29 @@ export async function POST(req: Request) {
     const base64Image = image.split(',')[1];
 
     // Enhanced prompt for style analysis with quality assessment
-    const stylePrompt = `Analyze this Instagram fashion image in detail and provide a structured analysis in the following JSON format:
+    const stylePrompt = `Analyze this fashion image and provide a JSON response in this exact format:
+
 {
-  "overall_aesthetic": "Brief description of the overall style aesthetic",
   "key_pieces": [
     {
-      "item": "Specific item name",
-      "description": "Detailed description including cut, material, fit",
-      "style_elements": "Key style elements that make it stand out",
-      "quality_assessment": "Assessment of apparent quality, materials, and craftsmanship"
+      "item": "Item name",
+      "description": "Brief description",
+      "style_elements": "Key style elements",
+      "quality_assessment": "Quality indicators"
     }
   ],
   "color_palette": {
     "primary": ["color1", "color2"],
-    "accent": ["color3", "color4"]
+    "accent": ["color3"]
   },
   "styling_patterns": [
-    "Pattern 1: e.g., layering technique",
-    "Pattern 2: e.g., color combination principle"
+    "Specific styling tip 1",
+    "Specific styling tip 2"
   ],
-  "recommended_searches": [
-    "Specific search term for similar items"
-  ]
+  "overall_aesthetic": "Brief description of the overall style"
 }
 
-Focus on identifying specific, searchable items and their unique characteristics, including quality indicators. Consider the budget level: ${budget}`;
+Important: Return ONLY valid JSON without any additional text or formatting.`;
 
     // Analyze the image using GPT-4 Turbo
     const response = await openai.chat.completions.create({
@@ -142,12 +189,16 @@ Focus on identifying specific, searchable items and their unique characteristics
       max_tokens: 1000,
     });
 
-    // Clean up the response content by removing markdown code blocks
-    let analysisText = response.choices[0].message.content || "{}";
-    analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    // Clean and validate the response content
+    const analysisText = response.choices[0].message.content || "{}";
     
     try {
-      const analysis = JSON.parse(analysisText);
+      const analysis = parseGPTResponse(analysisText);
+
+      if (!analysis.key_pieces || !Array.isArray(analysis.key_pieces)) {
+        console.error('Invalid analysis structure:', analysis);
+        throw new Error('Invalid analysis format: missing key_pieces array');
+      }
 
       // Generate recommendations with style tips
       const recommendations = [
@@ -156,24 +207,32 @@ Focus on identifying specific, searchable items and their unique characteristics
           items: await Promise.all(
             analysis.key_pieces.map(async (piece: any) => 
               searchMultipleStores(
-                piece.item,
-                piece.style_elements,
+                piece.item || 'Unknown item',
+                piece.style_elements || 'Classic style',
                 budget
               )
             )
           ),
-          aesthetic: analysis.overall_aesthetic,
-          color_palette: [...analysis.color_palette.primary, ...analysis.color_palette.accent],
+          aesthetic: analysis.overall_aesthetic || 'Classic Style',
+          color_palette: [
+            ...(analysis.color_palette?.primary || []),
+            ...(analysis.color_palette?.accent || [])
+          ],
           stores: ["Amazon", "Nordstrom", "ASOS"]
         },
         {
           type: "Styling Tips",
-          items: analysis.styling_patterns.map((tip: string) => ({
+          items: (analysis.styling_patterns || []).map((tip: string) => ({
             name: "Style Tip",
             description: tip,
-            style_match: "Based on your Instagram inspiration"
+            style_match: "Based on your Instagram inspiration",
+            shop_links: {
+              amazon: `https://www.amazon.com/s?k=${tip}`,
+              nordstrom: `https://www.nordstrom.com/sr?keyword=${tip}`,
+              asos: `https://www.asos.com/us/search/?q=${tip}`
+            }
           })),
-          color_palette: analysis.color_palette.primary,
+          color_palette: analysis.color_palette?.primary || [],
           aesthetic: "How to style your pieces"
         }
       ];

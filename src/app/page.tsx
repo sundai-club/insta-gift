@@ -23,17 +23,21 @@ interface Recommendation {
   items: {
     name: string;
     description: string;
-    style_match: string;
+    style_match?: string;
     image_url?: string;
     shop_links?: {
-      amazon: string;
-      nordstrom: string;
-      asos: string;
+      amazon?: string;
+      nordstrom?: string;
+      asos?: string;
     };
     price?: number;
   }[];
   aesthetic: string;
-  color_palette: string[];
+  colorPalette: {
+    primary: string[];
+    accent: string[];
+  };
+  stylingTips: string[];
   stores?: string[];
 }
 
@@ -413,31 +417,41 @@ export default function Home() {
               </h2>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {recommendations.map((rec, index) => (
-                  <div key={index} className="border border-gray-100 rounded-xl p-6 bg-gray-50">
-                    <h3 className="text-xl font-semibold mb-4 text-gray-800">{rec.type}</h3>
-                    <p className="text-gray-600 mb-4">
-                      {rec.aesthetic}
-                    </p>
-                    
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {rec.color_palette.map((color, i) => (
-                        <div
-                          key={i}
-                          className="w-8 h-8 rounded-full shadow-sm"
-                          style={{ backgroundColor: color }}
-                          title={color}
-                        />
-                      ))}
-                    </div>
-                    
-                    <div className="space-y-6">
-                      {rec.items.map((item, i) => (
-                        <RecommendationCard key={i} item={item} />
-                      ))}
-                    </div>
+                {/* Core Style Elements */}
+                <div className="border border-gray-100 rounded-xl p-6 bg-gray-50">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Core Style Elements</h3>
+                  
+                  {/* Color Palette */}
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {[...(recommendations[0]?.colorPalette?.primary || []), ...(recommendations[0]?.colorPalette?.accent || [])].map((color, i) => (
+                      <div
+                        key={i}
+                        className="w-8 h-8 rounded-full shadow-sm"
+                        style={{ backgroundColor: color }}
+                        title={color}
+                      />
+                    ))}
                   </div>
-                ))}
+                  
+                  {/* Recommended Items */}
+                  <div className="space-y-6">
+                    {recommendations[0]?.items.map((item, i) => (
+                      <RecommendationCard key={i} item={item} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Styling Tips */}
+                <div className="border border-gray-100 rounded-xl p-6 bg-gray-50">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Styling Tips</h3>
+                  <div className="space-y-4">
+                    {recommendations[1]?.items.map((tip, i) => (
+                      <div key={i} className="p-4 bg-white rounded-lg shadow-sm">
+                        <p className="text-gray-700">{tip.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </section>
           </div>
