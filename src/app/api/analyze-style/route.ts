@@ -6,44 +6,82 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Function to search Amazon for products
-async function searchAmazonProducts(query: string, budget: string) {
-  // Convert budget to price range
-  let maxPrice;
-  switch (budget) {
-    case 'budget':
-      maxPrice = 50;
-      break;
-    case 'medium':
-      maxPrice = 150;
-      break;
-    case 'luxury':
-      maxPrice = 500;
-      break;
-    default:
-      maxPrice = 150;
-  }
+// Function to estimate price using GPT-4o
+async function estimatePriceRange(item: string, style: string, budget: string) {
+  const pricePrompt = `As a fashion expert, estimate a realistic price range for:
+Item: ${item}
+Style: ${style}
+Budget Level: ${budget} (budget=affordable, medium=moderate, luxury=high-end)
+
+Consider:
+- Current market prices
+- Quality level expected
+- Brand tier for this style
+- Seasonal factors
+
+Respond with JSON only:
+{
+  "estimated_price": number (realistic average price),
+  "price_range": {"min": number, "max": number},
+  "reasoning": "Brief note about quality/value"
+}`;
 
   try {
-    // For now, we'll return a formatted search URL
-    // In production, you would integrate with Amazon's Product Advertising API
-    const searchQuery = encodeURIComponent(query);
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: pricePrompt }],
+      temperature: 0.7,
+    });
+
+    let analysisText = response.choices[0].message.content || "{}";
+    analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(analysisText);
+  } catch (error) {
+    console.error('Error estimating price:', error);
+    // Only use fallback if GPT fails completely
+    const basePrice = budget === 'luxury' ? 300 : budget === 'budget' ? 50 : 150;
     return {
-      name: query,
-      price: maxPrice,
-      description: `${query} matching your style`,
-      style_match: "Based on your Instagram inspiration",
-      shop_link: `https://www.amazon.com/s?k=${searchQuery}&rh=p_36%3A-${maxPrice}00`
+      estimated_price: basePrice,
+      price_range: { 
+        min: Math.floor(basePrice * 0.8), 
+        max: Math.ceil(basePrice * 1.2) 
+      },
+      reasoning: "Estimated based on budget level"
+    };
+  }
+}
+
+// Function to search products across multiple stores
+async function searchMultipleStores(item: string, style: string, budget: string) {
+  try {
+    const priceEstimate = await estimatePriceRange(item, style, budget);
+    const searchQuery = encodeURIComponent(item);
+    
+    // Generate store-specific URLs with price ranges
+    const amazonUrl = `https://www.amazon.com/s?k=${searchQuery}&rh=p_36%3A${priceEstimate.price_range.min}00-${priceEstimate.price_range.max}00`;
+    const nordstromUrl = `https://www.nordstrom.com/sr?keyword=${searchQuery}&price=${priceEstimate.price_range.min}-${priceEstimate.price_range.max}`;
+    const asosUrl = `https://www.asos.com/us/search/?q=${searchQuery}&price=${priceEstimate.price_range.min}-${priceEstimate.price_range.max}`;
+
+    return {
+      name: item,
+      price: priceEstimate.estimated_price,
+      description: `Perfect match for your style. ${priceEstimate.reasoning}`,
+      style_match: style,
+      shop_links: {
+        amazon: amazonUrl,
+        nordstrom: nordstromUrl,
+        asos: asosUrl
+      }
     };
   } catch (error) {
-    console.error('Error searching Amazon:', error);
+    console.error('Error searching products:', error);
     return null;
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const { image, budget, preferences } = await req.json();
+    const { image, budget } = await req.json();
 
     if (!image) {
       return NextResponse.json(
@@ -52,10 +90,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // Remove the data URL prefix to get just the base64 image data
     const base64Image = image.split(',')[1];
 
-    // Improved prompt for detailed style analysis
+    // Enhanced prompt for style analysis with quality assessment
     const stylePrompt = `Analyze this Instagram fashion image in detail and provide a structured analysis in the following JSON format:
 {
   "overall_aesthetic": "Brief description of the overall style aesthetic",
@@ -63,7 +100,8 @@ export async function POST(req: Request) {
     {
       "item": "Specific item name",
       "description": "Detailed description including cut, material, fit",
-      "style_elements": "Key style elements that make it stand out"
+      "style_elements": "Key style elements that make it stand out",
+      "quality_assessment": "Assessment of apparent quality, materials, and craftsmanship"
     }
   ],
   "color_palette": {
@@ -79,7 +117,7 @@ export async function POST(req: Request) {
   ]
 }
 
-Focus on identifying specific, searchable items and their unique characteristics. Consider the budget level: ${budget}`;
+Focus on identifying specific, searchable items and their unique characteristics, including quality indicators. Consider the budget level: ${budget}`;
 
     // Analyze the image using GPT-4o
     const response = await openai.chat.completions.create({
@@ -104,45 +142,52 @@ Focus on identifying specific, searchable items and their unique characteristics
       max_tokens: 1000,
     });
 
-    // Parse the AI response
+    // Clean up the response content by removing markdown code blocks
     let analysisText = response.choices[0].message.content || "{}";
-    
-    // Clean up the response text by removing markdown formatting
     analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     
-    // Parse the cleaned JSON
-    const analysis = JSON.parse(analysisText);
-    
-    // Search for products based on the analysis
-    const productPromises = analysis.recommended_searches.map(search => 
-      searchAmazonProducts(search, budget)
-    );
-    
-    const products = (await Promise.all(productPromises)).filter(p => p !== null);
+    try {
+      const analysis = JSON.parse(analysisText);
 
-    // Transform the analysis into our recommendation format
-    const recommendations = [
-      {
-        type: "Core Style Elements",
-        items: products,
-        aesthetic: analysis.overall_aesthetic,
-        color_palette: [...analysis.color_palette.primary, ...analysis.color_palette.accent]
-      },
-      {
-        type: "Styling Tips",
-        items: analysis.styling_patterns.map(pattern => ({
-          name: "Styling Tip",
-          description: pattern,
-          style_match: "Based on analyzed patterns"
-        })),
-        aesthetic: "Styling Techniques",
-        color_palette: analysis.color_palette.primary
-      }
-    ];
+      // Generate recommendations with style tips
+      const recommendations = [
+        {
+          type: "Core Style Elements",
+          items: await Promise.all(
+            analysis.key_pieces.map(async (piece: any) => 
+              searchMultipleStores(
+                piece.item,
+                piece.style_elements,
+                budget
+              )
+            )
+          ),
+          aesthetic: analysis.overall_aesthetic,
+          color_palette: [...analysis.color_palette.primary, ...analysis.color_palette.accent],
+          stores: ["Amazon", "Nordstrom", "ASOS"]
+        },
+        {
+          type: "Styling Tips",
+          items: analysis.styling_patterns.map((tip: string) => ({
+            name: "Style Tip",
+            description: tip,
+            style_match: "Based on your Instagram inspiration"
+          })),
+          color_palette: analysis.color_palette.primary,
+          aesthetic: "How to style your pieces"
+        }
+      ];
 
-    return NextResponse.json({ recommendations });
+      return NextResponse.json({ recommendations });
+    } catch (error) {
+      console.error('Error parsing analysis:', error);
+      return NextResponse.json(
+        { error: 'Failed to parse analysis' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error('Error analyzing style:', error);
+    console.error('Error:', error);
     return NextResponse.json(
       { error: 'Failed to analyze style' },
       { status: 500 }
