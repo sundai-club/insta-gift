@@ -28,7 +28,7 @@ Respond with JSON only:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4-turbo",
       messages: [{ role: "user", content: pricePrompt }],
       temperature: 0.7,
     });
@@ -119,9 +119,9 @@ export async function POST(req: Request) {
 
 Focus on identifying specific, searchable items and their unique characteristics, including quality indicators. Consider the budget level: ${budget}`;
 
-    // Analyze the image using GPT-4o
+    // Analyze the image using GPT-4 Turbo
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4-turbo",
       messages: [
         {
           role: "user",
