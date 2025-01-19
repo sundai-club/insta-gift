@@ -7,7 +7,8 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
-    const { imageUrl } = await request.json();
+    const { imageUrl, preferences } = await request.json();
+    const { budgetRange } = preferences;
 
     if (!imageUrl) {
       return NextResponse.json(
@@ -28,7 +29,15 @@ export async function POST(request: Request) {
           content: [
             {
               type: "text",
-              text: "Analyze this Instagram grid screenshot and identify the following fashion preferences:\n1. Color palette\n2. Style categories (e.g., minimalist, bohemian, streetwear)\n3. Preferred clothing items\n4. Common patterns or textures\n5. Outfit combinations\n\nProvide the analysis in a structured JSON format.",
+              text: `Analyze this Instagram grid screenshot and identify the following fashion preferences, considering a ${budgetRange} budget level:\n
+1. Color palette: List the dominant and accent colors used
+2. Style categories: Identify fashion styles (e.g., minimalist, bohemian, streetwear)
+3. Preferred clothing items: List specific types of clothing items featured
+4. Common patterns or textures: Identify recurring patterns and fabric textures
+5. Outfit combinations: Suggest 3-4 outfit combinations based on the style
+
+Please provide recommendations that align with a ${budgetRange} budget while maintaining the essence of the style.
+Format the analysis in a structured JSON format with the following keys: colorPalette, styleCategories, preferredItems, patterns, outfitCombinations.`,
             },
             {
               type: "image",

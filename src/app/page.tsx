@@ -69,7 +69,10 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [preferences, setPreferences] = useState<FashionPreference | null>(null);
 
-  const analyzeFashionPreferences = async (imageUrl: string) => {
+  const analyzeFashionPreferences = async (
+    imageUrl: string,
+    preferences: { budgetRange: string }
+  ) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -79,7 +82,7 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ imageUrl }),
+        body: JSON.stringify({ imageUrl, preferences }),
       });
 
       if (!response.ok) {
@@ -174,12 +177,12 @@ export default function Home() {
       </section>
 
       {/* Upload Section */}
-      <section id="upload" className="py-20 px-4">
-        <div className="max-w-4xl mx-auto">
+      <section id="upload" className="py-20 px-4 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">Upload Your Inspiration</h2>
+            <h2 className="text-4xl font-bold mb-4">Define Your Style</h2>
             <p className="text-xl text-gray-600">
-              Share your favorite fashion influencer's Instagram grid and let our AI analyze your style
+              Upload an Instagram grid and let our AI analyze your unique fashion preferences
             </p>
           </div>
 
@@ -187,7 +190,7 @@ export default function Home() {
 
           {isLoading && (
             <div className="text-center mt-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-900 mx-auto"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div>
               <p className="mt-4 text-gray-600">Analyzing your fashion preferences...</p>
             </div>
           )}
@@ -200,17 +203,17 @@ export default function Home() {
           )}
 
           {preferences && (
-            <div className="mt-12 space-y-8">
-              <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-2xl shadow-sm p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Palette className="text-purple-500" />
+                  <Palette className="text-pink-500" />
                   <h2 className="text-xl font-semibold">Color Palette</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {preferences.colorPalette.map((color, index) => (
                     <span
                       key={index}
-                      className="px-3 py-1 bg-purple-50 rounded-full text-sm"
+                      className="px-3 py-1 bg-pink-50 text-pink-700 rounded-full text-sm"
                     >
                       {color}
                     </span>
@@ -218,16 +221,16 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="bg-white rounded-2xl shadow-sm p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Sparkles className="text-yellow-500" />
+                  <Sparkles className="text-pink-500" />
                   <h2 className="text-xl font-semibold">Style Categories</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {preferences.styleCategories.map((style, index) => (
                     <span
                       key={index}
-                      className="px-3 py-1 bg-yellow-50 rounded-full text-sm"
+                      className="px-3 py-1 bg-pink-50 text-pink-700 rounded-full text-sm"
                     >
                       {style}
                     </span>
@@ -235,16 +238,16 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="bg-white rounded-2xl shadow-sm p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <ShoppingBag className="text-blue-500" />
+                  <ShoppingBag className="text-pink-500" />
                   <h2 className="text-xl font-semibold">Preferred Items</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {preferences.preferredItems.map((item, index) => (
                     <span
                       key={index}
-                      className="px-3 py-1 bg-blue-50 rounded-full text-sm"
+                      className="px-3 py-1 bg-pink-50 text-pink-700 rounded-full text-sm"
                     >
                       {item}
                     </span>
@@ -252,14 +255,14 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="bg-white rounded-2xl shadow-sm p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Instagram className="text-pink-500" />
                   <h2 className="text-xl font-semibold">Outfit Combinations</h2>
                 </div>
-                <ul className="list-disc list-inside space-y-2">
+                <ul className="space-y-2">
                   {preferences.outfitCombinations.map((combo, index) => (
-                    <li key={index} className="text-gray-700">
+                    <li key={index} className="text-gray-700 pl-4 border-l-2 border-pink-200">
                       {combo}
                     </li>
                   ))}
