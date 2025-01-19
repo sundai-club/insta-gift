@@ -18,19 +18,96 @@ import {
   Grid,
 } from "lucide-react";
 
-interface StyleRecommendation {
+interface Recommendation {
   type: string;
   items: {
     name: string;
-    price?: number;
     description: string;
     style_match: string;
     image_url?: string;
-    shop_link?: string;
+    shop_links?: {
+      amazon: string;
+      nordstrom: string;
+      asos: string;
+    };
+    price?: number;
   }[];
   aesthetic: string;
   color_palette: string[];
+  stores?: string[];
 }
+
+interface RecommendationItem {
+  name: string;
+  description: string;
+  style_match: string;
+  shop_links?: {
+    amazon: string;
+    nordstrom: string;
+    asos: string;
+  };
+  price?: number;
+}
+
+const RecommendationCard = ({ item }: { item: RecommendationItem }) => {
+  return (
+    <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 mb-6 border border-purple-100 hover:border-purple-200 transition-all">
+      <div className="mb-4">
+        <h3 className="text-xl font-semibold mb-2 text-gray-800">{item.name}</h3>
+        <p className="text-gray-600 mb-3">{item.description}</p>
+        <p className="text-purple-600 font-medium">{item.style_match}</p>
+      </div>
+      
+      {item.price && (
+        <p className="text-purple-600 font-semibold mb-4">${item.price}</p>
+      )}
+
+      {item.shop_links && (
+        <div className="flex flex-col gap-2">
+          {item.shop_links.amazon && (
+            <a
+              href={item.shop_links.amazon}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all shadow-sm hover:shadow group"
+            >
+              <span className="font-medium">Shop on Amazon</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 group-hover:translate-x-0.5 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </a>
+          )}
+          {item.shop_links.nordstrom && (
+            <a
+              href={item.shop_links.nordstrom}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center px-4 py-2.5 bg-white text-purple-600 border-2 border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all shadow-sm hover:shadow group"
+            >
+              <span className="font-medium">Shop on Nordstrom</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 group-hover:translate-x-0.5 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </a>
+          )}
+          {item.shop_links.asos && (
+            <a
+              href={item.shop_links.asos}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center px-4 py-2.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-all shadow-sm hover:shadow group"
+            >
+              <span className="font-medium">Shop on ASOS</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 group-hover:translate-x-0.5 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const sampleStyles = [
   {
@@ -39,15 +116,15 @@ const sampleStyles = [
     image: "/sample_images/IMG_4053.jpg",
   },
   {
-    name: "Street Style Edge",
-    description: "Urban, bold, and trend-setting looks",
+    name: "Modest Fashion",
+    description: "Elegant modest wear with creative layering, contemporary style, and sophisticated details",
     image: "/sample_images/IMG_4054.jpg",
   },
   {
     name: "Modern Elegance",
     description: "Sophisticated, polished, and contemporary fashion",
     image: "/sample_images/IMG_5155.png",
-  },
+  }
 ];
 
 const features = [
@@ -76,7 +153,7 @@ const features = [
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [recommendations, setRecommendations] = useState<StyleRecommendation[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [budget, setBudget] = useState<string>("medium");
 
@@ -356,37 +433,7 @@ export default function Home() {
                     
                     <div className="space-y-6">
                       {rec.items.map((item, i) => (
-                        <div key={i} className="flex items-start gap-4 bg-white p-4 rounded-lg shadow-sm">
-                          {item.image_url && (
-                            <div className="relative w-24 h-24 flex-shrink-0">
-                              <Image
-                                src={item.image_url}
-                                alt={item.name}
-                                fill
-                                className="object-cover rounded-lg"
-                              />
-                            </div>
-                          )}
-                          <div className="flex-grow">
-                            <h4 className="font-medium text-gray-800 mb-1">{item.name}</h4>
-                            {item.price && (
-                              <p className="text-purple-600 font-semibold mb-2">${item.price}</p>
-                            )}
-                            <p className="text-gray-600 text-sm mb-2">{item.description}</p>
-                            <p className="text-gray-500 text-sm italic">{item.style_match}</p>
-                            {item.shop_link && (
-                              <a
-                                href={item.shop_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center mt-2 text-purple-600 hover:text-purple-700 font-medium text-sm"
-                              >
-                                <ShoppingBag className="w-4 h-4 mr-1" />
-                                Shop Now
-                              </a>
-                            )}
-                          </div>
-                        </div>
+                        <RecommendationCard key={i} item={item} />
                       ))}
                     </div>
                   </div>
