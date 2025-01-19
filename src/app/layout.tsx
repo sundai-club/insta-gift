@@ -5,8 +5,8 @@ import "./globals.css";
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "InstaGift - AI Gift Finder",
-  description: "Discover the perfect gifts with AI-powered recommendations",
+  title: "InstaFashion - AI Fashion Finder",
+  description: "Discover the perfect fashion items with AI-powered recommendations",
 };
 
 export default function RootLayout({
