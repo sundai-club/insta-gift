@@ -1,16 +1,16 @@
-# InstaGift 🎁
+# InstaFashion 👗
 
-InstaGift is an AI-powered gift recommendation system that analyzes Instagram profiles and images to suggest personalized gifts. Using OpenAI's GPT-4 and Vision models, it provides tailored gift suggestions based on interests, age, and budget.
+InstaFashion is an AI-powered fashion profiling system that analyzes Instagram influencer profiles and images to suggest personalized fashion recommendations. Using OpenAI's GPT-4 and Vision models, it provides tailored fashion suggestions based on style analysis, trends, and preferences.
 
 ## Features 🌟
 
-- Instagram profile analysis
-- Image-based interest detection
-- Age-appropriate gift recommendations
-- Budget-conscious suggestions
-- Amazon and Etsy product links
-- Festive holiday theme with snowflake animations
-- Responsive design
+- Instagram influencer profile analysis
+- Image-based style detection
+- Fashion trend recommendations
+- Style-matched product suggestions
+- Amazon and other retailer product links
+- Modern, fashion-forward design
+- Responsive interface
 
 ## Tech Stack 💻
 
@@ -18,15 +18,15 @@ InstaGift is an AI-powered gift recommendation system that analyzes Instagram pr
 - **Backend**: Next.js API Routes
 - **AI**: OpenAI GPT-4 and GPT-4 Vision
 - **Image Processing**: Base64 encoding
-- **API Integration**: Amazon and Etsy search links
+- **API Integration**: Amazon and other fashion retailer search links
 
 ## Getting Started 🚀
 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/instagift.git
-cd instagift
+git clone https://github.com/yourusername/instafashion.git
+cd instafashion
 ```
 
 2. Install dependencies:
