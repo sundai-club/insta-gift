@@ -1,414 +1,462 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import {
-  Camera,
-  User,
-  DollarSign,
-  Sparkles,
-  Gift,
   Instagram,
-  Heart,
   Palette,
-  Dumbbell,
-  Laptop,
-  Cake,
-  Tag,
-  AlertCircle,
-  ShoppingCart,
+  Sparkles,
   ShoppingBag,
+  AlertCircle,
+  Camera,
+  Wand2,
+  Shirt,
+  TrendingUp,
+  Upload,
+  Tag,
+  Search,
+  Grid,
 } from "lucide-react";
-import { useState } from "react";
-import Snowflakes from "@/components/Snowflakes";
-import { sampleProfiles } from "@/data/examples";
 
-interface GiftRecommendation {
-  name: string;
-  price: number;
-  description: string;
-  match_reason: string;
-  amazon_link?: string;
-  etsy_link?: string;
+interface Recommendation {
+  type: string;
+  items: {
+    name: string;
+    description: string;
+    style_match?: string;
+    image_url?: string;
+    shop_links?: {
+      amazon?: string;
+      nordstrom?: string;
+      asos?: string;
+    };
+    price?: number;
+  }[];
+  aesthetic: string;
+  colorPalette: {
+    primary: string[];
+    accent: string[];
+  };
+  stylingTips: string[];
+  stores?: string[];
 }
+
+interface RecommendationItem {
+  name: string;
+  description: string;
+  style_match: string;
+  shop_links?: {
+    amazon: string;
+    nordstrom: string;
+    asos: string;
+  };
+  price?: number;
+}
+
+const RecommendationCard = ({ item }: { item: RecommendationItem }) => {
+  return (
+    <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 mb-6 border border-purple-100 hover:border-purple-200 transition-all">
+      <div className="mb-4">
+        <h3 className="text-xl font-semibold mb-2 text-gray-800">{item.name}</h3>
+        <p className="text-gray-600 mb-3">{item.description}</p>
+        <p className="text-purple-600 font-medium">{item.style_match}</p>
+      </div>
+      
+      {item.price && (
+        <p className="text-purple-600 font-semibold mb-4">${item.price}</p>
+      )}
+
+      {item.shop_links && (
+        <div className="flex flex-col gap-2">
+          {item.shop_links.amazon && (
+            <a
+              href={item.shop_links.amazon}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all shadow-sm hover:shadow group"
+            >
+              <span className="font-medium">Shop on Amazon</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 group-hover:translate-x-0.5 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </a>
+          )}
+          {item.shop_links.nordstrom && (
+            <a
+              href={item.shop_links.nordstrom}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center px-4 py-2.5 bg-white text-purple-600 border-2 border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all shadow-sm hover:shadow group"
+            >
+              <span className="font-medium">Shop on Nordstrom</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 group-hover:translate-x-0.5 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </a>
+          )}
+          {item.shop_links.asos && (
+            <a
+              href={item.shop_links.asos}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center px-4 py-2.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-all shadow-sm hover:shadow group"
+            >
+              <span className="font-medium">Shop on ASOS</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 group-hover:translate-x-0.5 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const sampleStyles = [
+  {
+    name: "Minimalist Chic",
+    description: "Clean lines, neutral colors, and timeless pieces",
+    image: "/sample_images/IMG_4053.jpg",
+  },
+  {
+    name: "Modest Fashion",
+    description: "Elegant modest wear with creative layering, contemporary style, and sophisticated details",
+    image: "/sample_images/IMG_4054.jpg",
+  },
+  {
+    name: "Modern Elegance",
+    description: "Sophisticated, polished, and contemporary fashion",
+    image: "/sample_images/IMG_5155.png",
+  }
+];
+
+const features = [
+  {
+    icon: Camera,
+    title: "Upload Instagram Grid",
+    description: "Share screenshots from your favorite fashion influencers",
+  },
+  {
+    icon: Wand2,
+    title: "AI Analysis",
+    description: "Our AI breaks down the style elements that inspire you",
+  },
+  {
+    icon: Shirt,
+    title: "Style Profile",
+    description: "Get a detailed breakdown of your fashion preferences",
+  },
+  {
+    icon: TrendingUp,
+    title: "Style Evolution",
+    description: "Track how your style evolves over time",
+  },
+];
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [recommendations, setRecommendations] = useState<GiftRecommendation[]>(
-    []
-  );
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [budget, setBudget] = useState<string>("medium");
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setPreviewUrl(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement> | string) => {
+    let imageUrl: string;
+    
+    if (typeof e === 'string') {
+      imageUrl = e;
+      setPreviewUrl(imageUrl);
+      
+      try {
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+        setPreviewUrl(base64);
+      } catch (error) {
+        console.error('Error loading example image:', error);
+        setError('Failed to load example image');
+      }
+    } else {
+      const file = e.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setPreviewUrl(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
+  const analyzeStyle = async () => {
+    if (!previewUrl) {
+      setError("Please upload an Instagram grid screenshot first");
+      return;
+    }
+
     setIsLoading(true);
+    setError(null);
 
     try {
-      const formData = new FormData(e.currentTarget);
-      const response = await fetch("/api/gifts", {
+      const response = await fetch("/api/analyze-style", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image: previewUrl,
+          budget,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to get recommendations");
+        throw new Error("Failed to analyze style");
       }
 
       const data = await response.json();
       setRecommendations(data.recommendations);
-
-      // Scroll to results
-      document.getElementById("results")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    } catch (error) {
-      setError("Failed to get gift recommendations. Please try again.");
-      console.error("Error:", error);
+    } catch (err) {
+      setError("Failed to analyze style. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleExampleClick = (profile: (typeof sampleProfiles)[0]) => {
-    const formData = new FormData();
-    formData.append("age", profile.age.toString());
-    formData.append("budget", profile.budget.toString());
-    formData.append("interests", profile.interests.join(", "));
-
-    handleSubmit({
-      preventDefault: () => {},
-      currentTarget: { formData },
-    } as any);
-  };
-
   return (
-    <main className="min-h-screen bg-gradient-to-br from-holiday-red/5 to-holiday-green/5">
-      {/* Background Elements */}
-      <div className="winter-background" />
-      <div className="winter-overlay" />
-      <div id="snowflakes" className="fixed inset-0 pointer-events-none z-10" />
-      <Snowflakes />
-
-      {/* Content */}
-      <div className="relative z-20 container mx-auto px-4">
-        {/* Hero Section */}
-        <section className="py-20 text-center">
-          <div className="max-w-4xl mx-auto bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-xl border-2 border-holiday-red transform hover:scale-[1.02] transition-all">
-            <h1 className="text-6xl sm:text-7xl font-bold mb-6 bg-gradient-to-r from-holiday-red to-holiday-green bg-clip-text text-transparent">
-              InstaGift 🎁
+    <main className="min-h-screen bg-white">
+      {/* Hero Section */}
+      <div className="w-full bg-gradient-to-br from-purple-700 via-purple-800 to-pink-800 py-32">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-7xl font-bold mb-6 text-white">
+              Define Your Style
             </h1>
-            <p className="text-2xl sm:text-3xl text-gray-700 mb-6">
-              Find the Perfect Holiday Gift with AI Magic ✨
+            <p className="text-xl text-white/90 max-w-2xl mx-auto leading-relaxed">
+              Upload your favorite fashion influencer's Instagram grid and
+              let AI decode your unique style preferences
             </p>
-            <div className="flex justify-center gap-4 text-4xl animate-bounce">
-              🎄 🎅 🎁
-            </div>
           </div>
-        </section>
+        </div>
+      </div>
 
-        {/* How It Works */}
-        <section className="mb-20">
-          <h2 className="text-4xl font-bold text-center mb-12 text-holiday-red">
-            How It Works
-          </h2>
+      {/* Features Section */}
+      <div className="w-full bg-gray-50 py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                icon: Camera,
-                number: "1",
-                title: "Upload Instagram Grid",
-                desc: "Share their Instagram profile screenshot",
-              },
-              {
-                icon: User,
-                number: "2",
-                title: "Add Details",
-                desc: "Tell us their age and interests",
-              },
-              {
-                icon: DollarSign,
-                number: "3",
-                title: "Set Budget",
-                desc: "Choose your spending limit",
-              },
-              {
-                icon: Gift,
-                number: "4",
-                title: "Get Recommendations",
-                desc: "Let our holiday elves work their magic!",
-              },
-            ].map((step) => (
-              <div
-                key={step.title}
-                className="relative p-8 rounded-xl border-2 border-holiday-green bg-white/95 backdrop-blur-sm shadow-xl hover:transform hover:-translate-y-2 transition-all duration-300"
-              >
-                <div className="absolute -top-5 -left-5 w-10 h-10 bg-holiday-red text-white rounded-full flex items-center justify-center font-bold text-xl shadow-lg">
-                  {step.number}
+            {features.map((feature, index) => (
+              <div key={index} className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                  <feature.icon className="w-6 h-6 text-purple-600" />
                 </div>
-                <div className="flex flex-col items-center text-center">
-                  <step.icon className="w-16 h-16 text-holiday-gold mb-6" />
-                  <h3 className="text-2xl font-bold mb-4 text-holiday-green">
-                    {step.title}
-                  </h3>
-                  <p className="text-gray-600 text-lg">{step.desc}</p>
-                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">{feature.title}</h3>
+                <p className="text-gray-600 text-sm">{feature.description}</p>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      </div>
 
-        {/* Sample Profiles */}
-        <section className="mb-16 p-8 border-2 border-dashed border-holiday-red rounded-xl relative">
-          <span className="absolute -top-4 left-8 bg-white px-4 text-2xl flex items-center gap-2">
-            <Heart className="w-6 h-6 text-holiday-red" />
-            Sample Profiles
-          </span>
+      {/* Sample Styles Section */}
+      <div className="w-full bg-white py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-semibold text-center mb-12">Explore Style Categories</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {sampleProfiles.map((profile) => (
-              <div
-                key={profile.name}
-                className="bg-white rounded-xl p-4 shadow-md hover:transform hover:scale-105 transition-transform border-2 border-holiday-green group cursor-pointer"
-                onClick={() => handleExampleClick(profile)}
+            {sampleStyles.map((style, index) => (
+              <div 
+                key={index}
+                className="group relative aspect-[4/5] rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300"
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <Gift className="w-6 h-6 text-holiday-gold" />
-                  <h4 className="text-xl font-bold">{profile.name}</h4>
-                </div>
-                <p className="text-gray-600 mb-4">{profile.desc}</p>
-                <div className="relative h-64 rounded-lg overflow-hidden group-hover:shadow-lg transition-shadow">
-                  <Image
-                    src={profile.img}
-                    alt={`${profile.name}'s profile`}
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="text-white text-lg font-bold mb-2">
-                      Try this example
-                    </p>
-                    <div className="text-white/80">
-                      <p>Age: {profile.age}</p>
-                      <p>Budget: ${profile.budget}</p>
-                    </div>
-                  </div>
+                <Image
+                  src={style.image}
+                  alt={style.name}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-6">
+                  <h3 className="text-white font-semibold text-xl mb-2">{style.name}</h3>
+                  <p className="text-white/90 text-sm">{style.description}</p>
+                  <button 
+                    onClick={() => handleImageUpload(style.image)}
+                    className="mt-4 bg-white/90 hover:bg-white text-gray-900 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Try this style
+                  </button>
                 </div>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      </div>
 
-        {/* Form Section */}
-        <section className="max-w-2xl mx-auto px-4 pb-20">
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-8 bg-white/95 backdrop-blur-md rounded-2xl p-8 shadow-xl border-2 border-holiday-green"
-          >
-            <h2 className="text-2xl font-bold text-center text-holiday-green mb-8">
-              Santa's Gift Finder 🎅
-            </h2>
-
-            {/* Age Input */}
-            <div className="space-y-2">
-              <label className="flex items-center text-lg font-medium text-gray-700">
-                <Gift className="w-5 h-5 mr-2 text-holiday-red" />
-                Who's Been Nice? (Age)
-              </label>
-              <input
-                type="number"
-                name="age"
-                required
-                min="1"
-                max="120"
-                className="w-full px-4 py-3 rounded-lg border-2 border-holiday-red/50 focus:border-holiday-red focus:ring-2 focus:ring-holiday-red/30"
-                placeholder="Enter age"
-              />
-            </div>
-
-            {/* Budget Input */}
-            <div className="space-y-2">
-              <label className="flex items-center text-lg font-medium text-gray-700">
-                <DollarSign className="w-5 h-5 mr-2 text-holiday-green" />
-                Holiday Budget
-              </label>
-              <input
-                type="number"
-                name="budget"
-                required
-                min="1"
-                className="w-full px-4 py-3 rounded-lg border-2 border-holiday-green/50 focus:border-holiday-green focus:ring-2 focus:ring-holiday-green/30"
-                placeholder="Enter budget in USD"
-              />
-            </div>
-
-            {/* Interests Input */}
-            <div className="space-y-2">
-              <label className="flex items-center text-lg font-medium text-gray-700">
-                <Heart className="w-5 h-5 mr-2 text-holiday-red" />
-                Holiday Wishes (Interests)
-              </label>
-              <textarea
-                name="interests"
-                className="w-full px-4 py-3 rounded-lg border-2 border-holiday-red/50 focus:border-holiday-red focus:ring-2 focus:ring-holiday-red/30"
-                placeholder="What brings them joy? (separated by commas)"
-                rows={3}
-              />
-            </div>
-
-            {/* Image Upload */}
-            <div className="space-y-2">
-              <label className="flex items-center text-lg font-medium text-gray-700">
-                <Camera className="w-5 h-5 mr-2 text-holiday-green" />
-                Instagram Memories (Optional)
-              </label>
-              <div className="relative">
+      {/* Upload Section */}
+      <div id="upload-section" className="w-full bg-gray-50 py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="bg-white p-8 rounded-2xl shadow-lg">
+              <h2 className="text-2xl font-semibold mb-6 flex items-center gap-3 text-gray-800">
+                <Upload className="w-6 h-6 text-purple-600" />
+                Upload Instagram Grid
+              </h2>
+              
+              <div className="space-y-6">
                 <input
                   type="file"
-                  name="instagram-grid"
                   accept="image/*"
                   onChange={handleImageUpload}
                   className="hidden"
-                  id="image-upload"
+                  id="imageUpload"
                 />
                 <label
-                  htmlFor="image-upload"
-                  className="flex items-center justify-center w-full px-4 py-3 rounded-lg border-2 border-dashed border-holiday-green/50 hover:border-holiday-green cursor-pointer bg-white/50 hover:bg-white/80 transition-all"
+                  htmlFor="imageUpload"
+                  className="block w-full cursor-pointer bg-purple-50/30 hover:bg-purple-100/30 text-purple-500 py-4 px-6 rounded-[24px] text-center transition-colors border border-dashed border-purple-300 hover:border-purple-400 shadow-sm"
                 >
-                  {previewUrl ? (
-                    <div className="relative w-full aspect-square max-w-xs mx-auto">
-                      <Image
-                        src={previewUrl}
-                        alt="Preview"
-                        fill
-                        className="object-cover rounded-lg"
-                      />
-                    </div>
-                  ) : (
-                    <span className="text-gray-500">
-                      Share their Instagram moments
-                    </span>
-                  )}
+                  Choose Screenshot
                 </label>
+
+                {!previewUrl && (
+                  <div className="mt-4 relative w-full">
+                    <div className="bg-white rounded-[32px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] overflow-hidden">
+                      <div className="p-6">
+                        <div className="text-gray-400/80 text-base mb-6 text-center">Instagram Grid Format</div>
+                        <div className="grid grid-cols-3 gap-3">
+                          {[...Array(9)].map((_, i) => (
+                            <div 
+                              key={i} 
+                              className="aspect-square bg-gray-50 rounded-xl flex items-center justify-center"
+                            >
+                              <div className="w-10 h-10 rounded-lg bg-gray-100 animate-pulse" />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="text-gray-400/60 text-sm mt-6 text-center">
+                          Take a screenshot of a fashion influencer's grid (3x3)
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {previewUrl && (
+                  <div className="relative aspect-square rounded-xl overflow-hidden shadow-md">
+                    <Image
+                      src={previewUrl}
+                      alt="Preview"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-4 px-6 bg-gradient-to-r from-holiday-red to-holiday-green text-white rounded-lg font-bold hover:opacity-90 transition-all disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-            >
-              {isLoading ? (
-                <span className="flex items-center justify-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
+            <div className="bg-white p-8 rounded-2xl shadow-lg">
+              <h2 className="text-2xl font-semibold mb-6 flex items-center gap-3 text-gray-800">
+                <Tag className="w-6 h-6 text-purple-600" />
+                Your Preferences
+              </h2>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">Budget Range</label>
+                  <select
+                    value={budget}
+                    onChange={(e) => setBudget(e.target.value)}
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
                   >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Checking Santa's List...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 mr-2" />
-                  Find Holiday Magic
-                </span>
-              )}
-            </button>
-          </form>
-        </section>
-
-        {/* Results Section */}
-        {recommendations.length > 0 && (
-          <section id="results" className="max-w-6xl mx-auto px-4 pb-20">
-            <h2 className="text-4xl font-bold text-center mb-12 text-holiday-red">
-              🎄 Santa's Suggestions ��
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {recommendations.map((gift, index) => (
-                <div
-                  key={index}
-                  className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl overflow-hidden transform hover:scale-105 transition-all duration-300 border-2 border-holiday-green"
-                >
-                  <div className="p-6 space-y-4">
-                    <div className="text-2xl font-bold text-holiday-red mb-2">
-                      {gift.name}
-                    </div>
-                    <p className="text-gray-700">{gift.description}</p>
-                    <div className="flex items-center text-holiday-green font-bold text-xl">
-                      <DollarSign className="w-5 h-5 mr-1" />
-                      {gift.price.toFixed(2)}
-                    </div>
-                    <p className="text-sm text-gray-600 italic">
-                      <Tag className="w-4 h-4 inline mr-1" />
-                      {gift.match_reason}
-                    </p>
-                    <div className="flex space-x-4 pt-4">
-                      {gift.amazon_link && (
-                        <a
-                          href={gift.amazon_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 flex items-center justify-center py-2 px-4 bg-holiday-gold text-white rounded-lg hover:opacity-90 transition-opacity shadow-md"
-                        >
-                          <ShoppingCart className="w-4 h-4 mr-2" />
-                          Amazon
-                        </a>
-                      )}
-                      {gift.etsy_link && (
-                        <a
-                          href={gift.etsy_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 flex items-center justify-center py-2 px-4 bg-holiday-red text-white rounded-lg hover:opacity-90 transition-opacity shadow-md"
-                        >
-                          <ShoppingBag className="w-4 h-4 mr-2" />
-                          Etsy
-                        </a>
-                      )}
-                    </div>
-                  </div>
+                    <option value="budget">Budget-Friendly</option>
+                    <option value="medium">Mid-Range</option>
+                    <option value="luxury">Luxury</option>
+                  </select>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
 
-        {error && (
-          <div className="fixed bottom-4 right-4 bg-red-100 border-l-4 border-holiday-red text-red-700 p-4 rounded-lg shadow-lg">
-            <div className="flex items-center">
-              <AlertCircle className="w-5 h-5 mr-2" />
-              {error}
+                <button
+                  onClick={analyzeStyle}
+                  disabled={isLoading || !previewUrl}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg transform hover:translate-y-[-2px] active:translate-y-0 duration-200"
+                >
+                  {isLoading ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Analyzing Style...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center">
+                      <Sparkles className="w-5 h-5 mr-2" />
+                      Get Style Recommendations
+                    </span>
+                  )}
+                </button>
+
+                {error && (
+                  <div className="text-red-500 text-sm bg-red-50 p-4 rounded-lg">
+                    {error}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
+
+      {/* Recommendations Section */}
+      {recommendations.length > 0 && (
+        <div className="w-full bg-white py-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <section className="bg-white rounded-2xl shadow-lg p-8">
+              <h2 className="text-3xl font-semibold mb-8 flex items-center gap-3 text-gray-800">
+                <Sparkles className="w-8 h-8 text-purple-600" />
+                Your Style Recommendations
+              </h2>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Core Style Elements */}
+                <div className="border border-gray-100 rounded-xl p-6 bg-gray-50">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Core Style Elements</h3>
+                  
+                  {/* Color Palette */}
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {[...(recommendations[0]?.colorPalette?.primary || []), ...(recommendations[0]?.colorPalette?.accent || [])].map((color, i) => (
+                      <div
+                        key={i}
+                        className="w-8 h-8 rounded-full shadow-sm"
+                        style={{ backgroundColor: color }}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* Recommended Items */}
+                  <div className="space-y-6">
+                    {recommendations[0]?.items.map((item, i) => (
+                      <RecommendationCard key={i} item={item} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Styling Tips */}
+                <div className="border border-gray-100 rounded-xl p-6 bg-gray-50">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-800">Styling Tips</h3>
+                  <div className="space-y-4">
+                    {recommendations[1]?.items.map((tip, i) => (
+                      <div key={i} className="p-4 bg-white rounded-lg shadow-sm">
+                        <p className="text-gray-700">{tip.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

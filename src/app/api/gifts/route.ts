@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { Groq } from "groq-sdk";
+import { OpenAI } from "openai";
 import sharp from "sharp";
 import * as cheerio from "cheerio";
 import fetch from "node-fetch";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 interface GiftRecommendation {
@@ -50,31 +50,28 @@ async function analyzeImage(base64Image: string): Promise<string> {
   try {
     console.log("[Image Analysis] Starting image analysis...");
 
-    const completion = await groq.chat.completions.create({
-      model: "mixtral-8x7b-32768",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert at analyzing Instagram profiles. Provide a detailed analysis of the person's lifestyle, activities, and preferences to help recommend thoughtful gifts.",
-        },
-        {
-          role: "user",
-          content: `Analyze this Instagram profile grid and describe what you observe:
+    const prompt = `Analyze this Instagram profile grid and describe what you observe:
 1. What activities and hobbies are shown?
 2. What locations or environments appear?
 3. What lifestyle elements are visible?
 4. What appears to be their main interests?
 5. What themes or patterns do you notice?
 
-Provide a detailed analysis that could help recommend personalized gifts.`,
+Provide a detailed analysis that could help recommend personalized gifts.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4-turbo",
+      messages: [
+        {
+          role: "user",
+          content: prompt,
         },
       ],
       temperature: 0.5,
       max_tokens: 500,
     });
 
-    const analysis = completion.choices[0]?.message?.content || "";
+    const analysis = response.choices[0].message.content || "";
     console.log("[Image Analysis] Full analysis:", analysis);
     return analysis;
   } catch (error) {
@@ -89,17 +86,7 @@ async function generateGiftRecommendations(
   profileAnalysis: string
 ): Promise<GiftRecommendation[]> {
   try {
-    const response = await groq.chat.completions.create({
-      model: "mixtral-8x7b-32768",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a creative gift recommendation expert who specializes in unique, personalized gifts. Include specific Amazon ASINs (product IDs) for each recommendation. Focus on highly-rated products that match the person's interests.",
-        },
-        {
-          role: "user",
-          content: `Based on this Instagram profile analysis:
+    const prompt = `Based on this Instagram profile analysis:
 ${profileAnalysis}
 
 Generate 3 UNIQUE and SPECIFIC gift recommendations for a ${age} year old with a budget of $${budget}. 
@@ -115,7 +102,14 @@ Format as JSON array: [
     "amazon_asin": "B0123XXXXX"  // Include real Amazon ASIN
   }
 ].
-Keep descriptions concise and avoid apostrophes.`,
+Keep descriptions concise and avoid apostrophes.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4-turbo",
+      messages: [
+        {
+          role: "user",
+          content: prompt,
         },
       ],
       temperature: 0.9,
